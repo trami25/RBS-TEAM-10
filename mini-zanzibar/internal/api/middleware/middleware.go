@@ -2,10 +2,13 @@ package middleware
 
 import (
 	"fmt"
+	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 )
 
 // Logger returns a gin.HandlerFunc that logs requests using zap
@@ -44,9 +47,39 @@ func CORS() gin.HandlerFunc {
 
 // RateLimit returns a gin.HandlerFunc that implements rate limiting
 func RateLimit(requests int, window time.Duration) gin.HandlerFunc {
+	// Create a map to store rate limiters per IP
+	limiters := make(map[string]*rate.Limiter)
+	var mu sync.RWMutex
+
+	// Calculate rate limit per second
+	ratePerSecond := rate.Limit(float64(requests) / window.Seconds())
+
 	return func(c *gin.Context) {
-		// TODO: Implement rate limiting middleware
-		// Should track requests per IP/user and enforce limits
+		ip := c.ClientIP()
+
+		mu.RLock()
+		limiter, exists := limiters[ip]
+		mu.RUnlock()
+
+		if !exists {
+			mu.Lock()
+			// Double-check pattern to avoid race condition
+			if limiter, exists = limiters[ip]; !exists {
+				limiter = rate.NewLimiter(ratePerSecond, requests)
+				limiters[ip] = limiter
+			}
+			mu.Unlock()
+		}
+
+		if !limiter.Allow() {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error":       "Rate limit exceeded",
+				"retry_after": "60s",
+			})
+			c.Abort()
+			return
+		}
+
 		c.Next()
 	}
 }

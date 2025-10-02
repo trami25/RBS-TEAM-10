@@ -11,4 +11,4 @@ This document can be shared with different users with different permission level
 ## Current Status
 This document has been shared with Bob as an editor through the ACL system.
 
-*Permission level determines what actions you can perform on this document.*
+*Permission level determines what actions you can perform on this.

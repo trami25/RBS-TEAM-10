@@ -1,6 +1,8 @@
 module mini-zanzibar
 
-go 1.21
+go 1.24.0
+
+toolchain go1.24.7
 
 require (
 	github.com/gin-gonic/gin v1.9.1
@@ -50,6 +52,7 @@ require (
 	golang.org/x/net v0.13.0 // indirect
 	golang.org/x/sys v0.10.0 // indirect
 	golang.org/x/text v0.11.0 // indirect
+	golang.org/x/time v0.13.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

@@ -4,6 +4,14 @@
 *.dll
 *.so
 *.dylib
+
+# Security files - DO NOT COMMIT
+.env
+*.key
+*.pem
+*.crt
+generate_hashes.go
+
 # Ignore server executable only in root and mini-zanzibar directory
 /server
 /mini-zanzibar/server

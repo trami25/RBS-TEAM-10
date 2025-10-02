@@ -3,6 +3,8 @@ const AUTH_BASE_URL = 'http://localhost:8081';
 const API_BASE_URL = 'http://localhost:8081/api';
 let currentUser = null;
 let isAuthenticated = false;
+let autoRefreshInterval = null;
+let lastDocumentCount = 0;
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -52,6 +54,7 @@ async function checkAuthStatus() {
             isAuthenticated = true;
             hideLoginForm();
             updateUserDisplay();
+            startAutoRefresh(); // Start automatic refresh for real-time updates
         }
     } catch (error) {
         // Not authenticated, show login form
@@ -91,6 +94,7 @@ async function login(username, password) {
             isAuthenticated = true;
             hideLoginForm();
             updateUserDisplay();
+            startAutoRefresh(); // Start automatic refresh for real-time updates
             logActivity(`✅ Login successful: ${data.user_id} (${userRole})`, 'success');
             
             // Load documents after successful login
@@ -108,6 +112,7 @@ async function login(username, password) {
 
 async function logout() {
     try {
+        stopAutoRefresh(); // Stop automatic refresh
         await makeAuthCall('/auth/logout', 'POST');
         currentUser = null;
         isAuthenticated = false;
@@ -208,6 +213,85 @@ async function checkAuthServiceStatus() {
     }
 }
 
+// Auto-refresh functionality for real-time ACL updates
+function startAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+    
+    // Check for updates every 5 seconds
+    autoRefreshInterval = setInterval(async () => {
+        if (isAuthenticated && currentUser) {
+            await checkForUpdates();
+        }
+    }, 5000);
+    
+    // Update status indicator
+    const statusElement = document.getElementById('auto-refresh-status');
+    if (statusElement) {
+        statusElement.textContent = '🔄 Auto-refresh active';
+        statusElement.style.color = '#28a745';
+    }
+    
+    logActivity('🔄 Started automatic refresh for real-time updates', 'info');
+}
+
+function stopAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+        
+        // Update status indicator
+        const statusElement = document.getElementById('auto-refresh-status');
+        if (statusElement) {
+            statusElement.textContent = '⏹️ Auto-refresh stopped';
+            statusElement.style.color = '#6c757d';
+        }
+        
+        logActivity('⏹️ Stopped automatic refresh', 'info');
+    }
+}
+
+async function checkForUpdates() {
+    try {
+        // Check if document count has changed (new documents shared with user)
+        const response = await fetch(`${AUTH_BASE_URL}/documents`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            const currentDocumentCount = data.documents ? data.documents.length : 0;
+            
+            // If document count changed, refresh the UI
+            if (lastDocumentCount !== 0 && currentDocumentCount !== lastDocumentCount) {
+                const change = currentDocumentCount > lastDocumentCount ? 'gained' : 'lost';
+                logActivity(`📄 Document access updated! You ${change} access to ${Math.abs(currentDocumentCount - lastDocumentCount)} document(s)`, 'success');
+                
+                // Show visual notification
+                showUpdateNotification(`Document access updated! You ${change} access to ${Math.abs(currentDocumentCount - lastDocumentCount)} document(s)`);
+                
+                // Refresh documents list if on documents tab
+                if (document.getElementById('documents').style.display !== 'none') {
+                    await loadDocuments();
+                }
+                
+                // Refresh permissions if on test authorization tab
+                if (document.getElementById('test-authorization').style.display !== 'none') {
+                    await refreshMyPermissions();
+                    await loadDocumentsForTesting();
+                }
+            }
+            
+            lastDocumentCount = currentDocumentCount;
+        }
+    } catch (error) {
+        // Silently handle errors for background refresh
+        console.log('Background refresh error (normal):', error.message);
+    }
+}
+
 // UI Management
 function initializeUI() {
     setupLoginForm();
@@ -296,8 +380,8 @@ async function loadDocuments() {
     try {
         logActivity('🔄 Loading documents...', 'info');
         
-        // Get documents from the local server which checks Mini-Zanzibar permissions
-        const response = await fetch('http://localhost:3001/api/documents', {
+        // Get documents from the auth service which checks Mini-Zanzibar permissions
+        const response = await fetch(`${AUTH_BASE_URL}/documents`, {
             method: 'GET',
             credentials: 'include'
         });
@@ -307,44 +391,77 @@ async function loadDocuments() {
         }
         
         const data = await response.json();
+        console.log('DEBUG: Documents received from server:', data);
+        
         const documentsContainer = document.getElementById('documents-list');
         
         if (data.documents && data.documents.length > 0) {
+            // Store document count for auto-refresh detection
+            lastDocumentCount = data.documents.length;
+            
+            console.log('DEBUG: Processing documents:', data.documents);
+            
+            // The backend now returns detailed permission information for each document
             documentsContainer.innerHTML = data.documents.map(doc => {
-                const permissionBadge = doc.isOwner ? 'owner' : (doc.canEdit ? 'editor' : 'viewer');
-                const permissionColor = doc.isOwner ? '#28a745' : (doc.canEdit ? '#ffc107' : '#6c757d');
+                console.log('DEBUG: Processing document:', doc, typeof doc);
+                
+                // Ensure doc is an object with the expected properties
+                if (typeof doc !== 'object' || !doc.name) {
+                    console.error('ERROR: Invalid document format:', doc);
+                    return ''; // Skip invalid documents
+                }
+                
+                // doc is now an object with name and permission flags
+                const docName = doc.name;
+                const canView = doc.canView;
+                const canEdit = doc.canEdit;
+                const canOwn = doc.canOwn;
+                
+                console.log(`DEBUG: Document ${docName} permissions: view=${canView}, edit=${canEdit}, own=${canOwn}`);
+                
+                // Skip documents where user has no permissions at all
+                if (!canView && !canEdit && !canOwn) {
+                    console.log(`DEBUG: Skipping ${docName} - no permissions`);
+                    return ''; // Don't display this document
+                }
+                
+                // Determine the highest permission level for the badge
+                const permissionLevel = canOwn ? 'owner' : (canEdit ? 'editor' : 'viewer');
+                const permissionColor = canOwn ? '#28a745' : (canEdit ? '#ffc107' : '#6c757d');
                 
                 return `
                     <div class="document-item">
                         <div class="document-header">
-                            <h3>${doc.name}</h3>
+                            <h3>${docName}</h3>
                             <span class="permission-badge" style="background-color: ${permissionColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">
-                                ${permissionBadge}
+                                ${permissionLevel}
                             </span>
                         </div>
                         <div class="document-actions">
-                            <button onclick="openDocument('${doc.name}')" class="btn-primary">
-                                📖 View
-                            </button>
-                            ${doc.canEdit ? `
-                                <button onclick="editDocument('${doc.name}')" class="btn-secondary">
+                            ${canView ? `
+                                <button onclick="openDocument('${docName}')" class="btn-primary">
+                                    📖 View
+                                </button>
+                            ` : ''}
+                            ${canEdit ? `
+                                <button onclick="editDocument('${docName}')" class="btn-secondary">
                                     ✏️ Edit
                                 </button>
                             ` : ''}
-                            ${doc.isOwner ? `
-                                <button onclick="shareDocument('${doc.name}')" class="btn-tertiary">
+                            ${canOwn ? `
+                                <button onclick="shareDocument('${docName}')" class="btn-tertiary">
                                     📤 Share
                                 </button>
                             ` : ''}
                         </div>
                     </div>
                 `;
-            }).join('');
+            }).filter(html => html !== '').join(''); // Filter out empty strings from documents without permissions
         } else {
             documentsContainer.innerHTML = '<p>No documents available for your role.</p>';
         }
         
-        logActivity(`📄 Loaded ${data.documents ? data.documents.length : 0} documents for user: ${data.user}`, 'success');
+        logActivity(`📄 Loaded ${data.documents ? data.documents.length : 0} documents for user: ${data.user} (${data.role})`, 'success');
     } catch (error) {
         logActivity(`Failed to load documents: ${error.message}`, 'error');
         const documentsContainer = document.getElementById('documents-list');
@@ -354,9 +471,19 @@ async function loadDocuments() {
 
 async function openDocument(docName) {
     try {
+        // Debug: Check what we received
+        console.log('DEBUG: openDocument called with:', docName, typeof docName);
+        
+        // Ensure docName is a string
+        if (typeof docName !== 'string') {
+            console.error('ERROR: Document name is not a string:', docName);
+            logActivity(`❌ Error: Invalid document name format`, 'error');
+            return;
+        }
+        
         logActivity(`📖 Opening document: ${docName}...`, 'info');
         
-        const response = await fetch(`http://localhost:3001/api/documents/${docName}/content`, {
+        const response = await fetch(`${AUTH_BASE_URL}/documents/${docName}`, {
             method: 'GET',
             credentials: 'include'
         });
@@ -372,8 +499,8 @@ async function openDocument(docName) {
         }
         
         const data = await response.json();
-        logActivity(`📖 Opened document: ${docName} (${data.permission} access)`, 'success');
-        showDocumentContent(docName, data.content, false, data.permission);
+        logActivity(`📖 Opened document: ${docName} (${data.canEdit ? 'edit' : 'read'} access)`, 'success');
+        showDocumentContent(docName, data.content, false, data.canEdit ? 'editor' : 'viewer');
         
     } catch (error) {
         logActivity(`Error opening document: ${error.message}`, 'error');
@@ -383,9 +510,19 @@ async function openDocument(docName) {
 
 async function editDocument(docName) {
     try {
+        // Debug: Check what we received
+        console.log('DEBUG: editDocument called with:', docName, typeof docName);
+        
+        // Ensure docName is a string
+        if (typeof docName !== 'string') {
+            console.error('ERROR: Document name is not a string:', docName);
+            logActivity(`❌ Error: Invalid document name format`, 'error');
+            return;
+        }
+        
         logActivity(`✏️ Opening document for editing: ${docName}...`, 'info');
         
-        const response = await fetch(`http://localhost:3001/api/documents/${docName}/content`, {
+        const response = await fetch(`${AUTH_BASE_URL}/documents/${docName}`, {
             method: 'GET',
             credentials: 'include'
         });
@@ -401,8 +538,16 @@ async function editDocument(docName) {
         }
         
         const data = await response.json();
-        logActivity(`✏️ Editing document: ${docName} (${data.permission} access)`, 'success');
-        showDocumentContent(docName, data.content, true, data.permission);
+        
+        // Check if user can edit
+        if (!data.canEdit) {
+            logActivity(`❌ Access denied: Cannot edit ${docName} (read-only access)`, 'error');
+            showAccessDenied(`You don't have permission to edit this document. You have read-only access.`);
+            return;
+        }
+        
+        logActivity(`✏️ Editing document: ${docName} (edit access)`, 'success');
+        showDocumentContent(docName, data.content, true, 'editor');
         
     } catch (error) {
         logActivity(`Error editing document: ${error.message}`, 'error');
@@ -411,6 +556,16 @@ async function editDocument(docName) {
 }
 
 function shareDocument(docName) {
+    // Debug: Check what we received
+    console.log('DEBUG: shareDocument called with:', docName, typeof docName);
+    
+    // Ensure docName is a string
+    if (typeof docName !== 'string') {
+        console.error('ERROR: Document name is not a string:', docName);
+        logActivity(`❌ Error: Invalid document name format`, 'error');
+        return;
+    }
+    
     // Check if user is owner by checking their permissions on this specific document
     // This is more accurate than checking the global role
     if (!currentUser) {
@@ -556,6 +711,12 @@ async function shareDocumentWithUser(docName) {
         // Close the modal
         const modal = userInput.closest('.modal');
         if (modal) modal.remove();
+        
+        // Automatically refresh the documents list and permissions
+        loadDocuments();
+        if (document.getElementById('test-authorization').style.display !== 'none') {
+            refreshMyPermissions();
+        }
         
         // Show success message
         const successModal = document.createElement('div');
@@ -785,12 +946,12 @@ async function saveDocument(docName) {
     try {
         logActivity(`💾 Saving document: ${docName}...`, 'info');
         
-        const response = await fetch(`/api/documents/${docName}/content`, {
-            method: 'POST',
+        const response = await fetch(`${AUTH_BASE_URL}/documents/${docName}`, {
+            method: 'PUT',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${sessionStorage.getItem('token')}`
+                'Content-Type': 'application/json'
             },
+            credentials: 'include',
             body: JSON.stringify({ content: content })
         });
         
@@ -827,23 +988,63 @@ async function refreshMyPermissions() {
     permissionsGrid.innerHTML = '<div>Loading permissions...</div>';
 
     try {
-        const documents = ['document1', 'document2', 'document3'];
+        // Get the list of documents from the server
+        const documentsResponse = await fetch(`${AUTH_BASE_URL}/documents`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        if (!documentsResponse.ok) {
+            throw new Error('Failed to load documents list');
+        }
+        
+        const documentsData = await documentsResponse.json();
+        console.log('DEBUG: Documents data for permissions:', documentsData);
+        
+        const documents = documentsData.documents || [];
+        console.log('DEBUG: Documents array:', documents);
+        
         const permissions = ['viewer', 'editor', 'owner'];
         let permissionCards = '';
 
         for (const doc of documents) {
+            console.log('DEBUG: Processing permissions for doc:', doc, typeof doc);
+            
             let userPermissions = [];
             
-            for (const permission of permissions) {
-                try {
-                    // Handle username format - ensure it starts with user:
-                    const userId = currentUser.username.startsWith('user:') ? currentUser.username : `user:${currentUser.username}`;
-                    const response = await makeApiCall(`/acl/check?object=doc:${doc}&relation=${permission}&user=${userId}`);
-                    if (response.authorized) {
-                        userPermissions.push(permission);
+            // Handle both old format (strings) and new format (objects) 
+            let docName;
+            if (typeof doc === 'string') {
+                docName = doc;
+            } else if (typeof doc === 'object' && doc.name) {
+                docName = doc.name;
+            } else {
+                console.error('ERROR: Invalid document format for permissions:', doc);
+                continue; // Skip invalid documents
+            }
+            
+            console.log(`DEBUG: Processing permissions for document: ${docName}`);
+            
+            // If we have detailed permissions from the backend, use them directly
+            if (typeof doc === 'object' && doc.canView !== undefined) {
+                console.log(`DEBUG: Using backend permissions for ${docName}:`, {canView: doc.canView, canEdit: doc.canEdit, canOwn: doc.canOwn});
+                if (doc.canOwn) userPermissions.push('owner');
+                if (doc.canEdit) userPermissions.push('editor');
+                if (doc.canView) userPermissions.push('viewer');
+            } else {
+                console.log(`DEBUG: Falling back to API calls for ${docName}`);
+                // Fallback to API calls for permission checking
+                for (const permission of permissions) {
+                    try {
+                        // Handle username format - ensure it starts with user:
+                        const userId = currentUser.username.startsWith('user:') ? currentUser.username : `user:${currentUser.username}`;
+                        const response = await makeApiCall(`/acl/check?object=doc:${docName}&relation=${permission}&user=${userId}`);
+                        if (response.authorized) {
+                            userPermissions.push(permission);
+                        }
+                    } catch (error) {
+                        console.error(`Error checking ${permission} for ${docName}:`, error);
                     }
-                } catch (error) {
-                    console.error(`Error checking ${permission} for ${doc}:`, error);
                 }
             }
 
@@ -851,9 +1052,12 @@ async function refreshMyPermissions() {
                                     userPermissions.includes('editor') ? 'editor' : 
                                     userPermissions.includes('viewer') ? 'viewer' : 'none';
 
+            // Display name without .md extension for cleaner UI
+            const displayName = docName.replace('.md', '');
+            
             permissionCards += `
                 <div class="permission-card">
-                    <h4>${doc}</h4>
+                    <h4>${displayName}</h4>
                     <div class="permission-badge ${highestPermission}">
                         ${highestPermission === 'none' ? 'No Access' : highestPermission.charAt(0).toUpperCase() + highestPermission.slice(1)}
                     </div>
@@ -863,7 +1067,7 @@ async function refreshMyPermissions() {
         }
 
         permissionsGrid.innerHTML = permissionCards || '<div>No documents found</div>';
-        logActivity(`🔍 Refreshed permissions for ${currentUser.username}`, 'info');
+        logActivity(`🔍 Refreshed permissions for ${currentUser.username} (${documents.length} documents)`, 'info');
 
     } catch (error) {
         permissionsGrid.innerHTML = '<div class="error">Error loading permissions</div>';
@@ -876,8 +1080,62 @@ function initializeTestAuthSection() {
     if (currentUser) {
         // Pre-fill user field with current user
         document.getElementById('test-user').value = currentUser.username;
+        // Load documents into dropdown
+        loadDocumentsForTesting();
         // Auto-load current user's permissions
         refreshMyPermissions();
+    }
+}
+
+// Load documents into the test authorization dropdown
+async function loadDocumentsForTesting() {
+    try {
+        const response = await fetch(`${AUTH_BASE_URL}/documents`, {
+            method: 'GET',
+            credentials: 'include'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('DEBUG: Loading documents for testing:', data);
+        
+        const dropdown = document.getElementById('test-document');
+        
+        if (dropdown && data.documents && data.documents.length > 0) {
+            // Clear existing options except the first one
+            dropdown.innerHTML = '<option value="">Select a document...</option>';
+            
+            // Add documents to dropdown (remove .md extension for display)
+            data.documents.forEach(doc => {
+                console.log('DEBUG: Processing test document:', doc, typeof doc);
+                
+                const option = document.createElement('option');
+                // Handle both old format (strings) and new format (objects)
+                let docName;
+                if (typeof doc === 'string') {
+                    docName = doc;
+                } else if (typeof doc === 'object' && doc.name) {
+                    docName = doc.name;
+                } else {
+                    console.error('ERROR: Invalid document format for testing:', doc);
+                    return; // Skip invalid documents
+                }
+                
+                // Use the full filename as value (for API calls)
+                option.value = docName;
+                // Display name without .md extension for cleaner UI
+                option.textContent = docName.replace('.md', '');
+                dropdown.appendChild(option);
+            });
+            
+            logActivity(`🔄 Loaded ${data.documents.length} documents into test dropdown`, 'info');
+        }
+    } catch (error) {
+        console.error('Error loading documents for testing:', error);
+        logActivity(`❌ Failed to load documents for testing: ${error.message}`, 'error');
     }
 }
 
@@ -1036,4 +1294,61 @@ function clearACLForm() {
     document.getElementById('acl-object').value = '';
     document.getElementById('acl-relation').value = '';
     document.getElementById('acl-user').value = '';
+}
+
+// Show update notification
+function showUpdateNotification(message) {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background-color: #28a745;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 5px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        z-index: 2000;
+        max-width: 400px;
+        animation: slideInRight 0.3s ease-out;
+    `;
+    
+    notification.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span>📄 ${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()" style="
+                background: none;
+                border: none;
+                color: white;
+                font-size: 18px;
+                cursor: pointer;
+                margin-left: 10px;
+            ">&times;</button>
+        </div>
+    `;
+    
+    // Add animation styles
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.style.animation = 'slideInRight 0.3s ease-out reverse';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, 5000);
 }

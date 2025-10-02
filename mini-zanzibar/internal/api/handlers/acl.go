@@ -391,6 +391,17 @@ func (h *ACLHandler) isAuthorizedForACLManagement(c *gin.Context, object string)
 			if len(existingTuples) == 0 {
 				h.logger.Infow("Bootstrap mode: Allowing alice to create first ACL (no existing ACLs for alice)", "object", object)
 				return true
+			} else {
+				// SPECIAL CASE: Allow Alice to create new documents even if she has existing ACLs
+				// Check if this is a NEW document that Alice doesn't own yet
+				authorized, err := h.performAuthorizationCheck(object, "owner", userStr)
+				if err != nil {
+					h.logger.Errorw("Failed to check if Alice owns this specific object", "error", err)
+				} else if !authorized {
+					// Alice doesn't own this specific object, but she can create new ones
+					h.logger.Infow("Allowing Alice to create new document ownership", "object", object, "user", userStr)
+					return true
+				}
 			}
 		}
 	}
@@ -402,6 +413,16 @@ func (h *ACLHandler) isAuthorizedForACLManagement(c *gin.Context, object string)
 		h.logger.Errorw("Failed to check owner authorization", "error", err, "object", object, "user", userStr)
 	} else if authorized {
 		h.logger.Infow("User authorized as owner of specific object", "object", object, "user", userStr)
+		return true
+	}
+
+	// SPECIAL CASE: Allow creating owner permissions for new documents
+	// If the object doesn't have ANY ACLs yet, allow the requesting user to become the owner
+	existingObjectTuples, err := h.leveldbClient.ListTuplesByObject(object)
+	if err != nil {
+		h.logger.Errorw("Failed to check existing ACLs for object", "error", err, "object", object)
+	} else if len(existingObjectTuples) == 0 {
+		h.logger.Infow("Allowing user to become owner of new object (no existing ACLs)", "object", object, "user", userStr)
 		return true
 	}
 
@@ -448,7 +469,25 @@ func (h *ACLHandler) performAuthorizationCheck(object, relation, user string) (b
 		return true, nil
 	}
 
-	// 2. Check namespace rules for computed usersets and union operations
+	// 2. Check permission hierarchy: owner > editor > viewer
+	// If user is checking for viewer/editor permission, also check if they have higher permissions
+	hierarchyPermissions := h.getPermissionHierarchy(relation)
+	for _, higherPermission := range hierarchyPermissions {
+		if higherPermission != relation {
+			higherAuthorized, err := h.leveldbClient.CheckTuple(object, higherPermission, user)
+			if err != nil {
+				h.logger.Warnw("Failed to check higher permission", "error", err, "permission", higherPermission)
+				continue
+			}
+			if higherAuthorized {
+				h.logger.Infow("User authorized via permission hierarchy",
+					"user", user, "object", object, "requested", relation, "granted_via", higherPermission)
+				return true, nil
+			}
+		}
+	}
+
+	// 3. Check namespace rules for computed usersets and union operations
 	parts := strings.Split(object, ":")
 	if len(parts) != 2 {
 		return false, nil
@@ -524,6 +563,22 @@ func (h *ACLHandler) checkComputedUserset(object, computedRelation, user string)
 	}
 
 	return false, nil
+}
+
+// getPermissionHierarchy returns the permission hierarchy for a given relation
+// In order of precedence: owner > editor > viewer
+func (h *ACLHandler) getPermissionHierarchy(relation string) []string {
+	switch relation {
+	case "viewer":
+		return []string{"owner", "editor", "viewer"}
+	case "editor":
+		return []string{"owner", "editor"}
+	case "owner":
+		return []string{"owner"}
+	default:
+		// For unknown relations, only check the exact relation
+		return []string{relation}
+	}
 }
 
 // Invalidate authorization cache when ACLs change
