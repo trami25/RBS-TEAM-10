@@ -1,205 +1,205 @@
-# Threat Model - Mini-Zanzibar Authorization System
+# Model Pretnji - Mini-Zanzibar Sistem Autorizacije
 
-## System Overview
+## Pregled Sistema
 
-Mini-Zanzibar is a global authorization system that manages access control through:
-- LevelDB for storing ACL tuples
-- ConsulDB for namespace configuration with versioning
-- REST API for ACL and namespace management
+Mini-Zanzibar je globalni sistem autorizacije koji upravlja kontrolom pristupa kroz:
+- LevelDB za čuvanje ACL torki
+- ConsulDB za konfiguraciju namespace-a sa verzionisanjem
+- REST API za upravljanje ACL-om i namespace-om
 
-## Assets
+## Sredstva
 
-### Primary Assets:
-1. **Authorization Data (ACL Tuples)** - Critical
-   - Format: object#relation@user
-   - Stored in LevelDB
-   - Controls access to protected resources
+### Primarna Sredstva:
+1. **Podaci o autorizaciji (ACL torke)** - Kritično  
+   - Format: objekat#relacija@korisnik  
+   - Čuvaju se u LevelDB  
+   - Kontrolišu pristup zaštićenim resursima  
 
-2. **Namespace Configurations** - High
-   - Defines authorization rules and relations
-   - Stored in ConsulDB with versioning
-   - Controls authorization logic
+2. **Namespace Konfiguracije** - Visoko  
+   - Definišu pravila i relacije autorizacije  
+   - Čuvaju se u ConsulDB sa verzionisanjem  
+   - Kontrolišu logiku autorizacije  
 
-3. **API Service** - High
-   - Provides authorization decisions
-   - Manages ACL and namespace operations
+3. **API Servis** - Visoko  
+   - Pruža odluke o autorizaciji  
+   - Upravljа ACL i namespace operacijama  
 
-### Supporting Assets:
-1. **Database Systems** (LevelDB, ConsulDB)
-2. **Configuration Data**
-3. **Log Files**
-4. **System Infrastructure**
+### Pomoćna Sredstva:
+1. **Baze podataka** (LevelDB, ConsulDB)  
+2. **Konfiguracioni podaci**  
+3. **Log fajlovi**  
+4. **Sistemska infrastruktura**  
 
-## Threat Actors
+## Akteri Pretnji
 
-### External Attackers
-- **Skill Level**: Medium to High
-- **Motivation**: Data theft, system disruption, privilege escalation
-- **Access**: Network access to API endpoints
+### Spoljni Napadači
+- **Nivo**: Srednji do visok  
+- **Motivacija**: Krađa podataka, ometanje sistema, eskalacija privilegija  
+- **Pristup**: Mrežni pristup API endpoint-ima  
 
-### Malicious Insiders
-- **Skill Level**: High
-- **Motivation**: Data theft, sabotage, unauthorized access
-- **Access**: Potential system-level access
+### Zlonamerni Insajderi
+- **Nivo**: Visok  
+- **Motivacija**: Krađa podataka, sabotaža, neautorizovan pristup  
+- **Pristup**: Potencijalni sistemski pristup  
 
-### Compromised Applications
-- **Skill Level**: Variable
-- **Motivation**: Lateral movement, data access
-- **Access**: API access through compromised client applications
+### Kompromitovane Aplikacije
+- **Nivo**: Varijabilan  
+- **Motivacija**: Lateralno kretanje, pristup podacima  
+- **Pristup**: API pristup kroz kompromitovane klijentske aplikacije  
 
-## Attack Vectors and Threats
+## Vektori Napada i Pretnje
 
-### 1. API Security Threats
+### 1. Pretnje API Bezbednosti
 
-#### T1.1: Unauthorized API Access
-- **Description**: Attackers bypass authentication to access API endpoints
-- **Impact**: High - Unauthorized ACL modifications, data exposure
-- **Likelihood**: Medium
-- **Mitigations**: 
-  - TODO: Implement JWT authentication
-  - TODO: API rate limiting
-  - TODO: Request validation
+#### T1.1: Neautorizovan API Pristup
+- **Opis**: Napadači zaobilaze autentifikaciju da bi pristupili API endpoint-ima  
+- **Uticaj**: Visok - Neautorizovane izmene ACL-a, izlaganje podataka  
+- **Verovatnoća**: Srednja  
+- **Rešenja**:  
+  - TODO: Implementirati JWT autentifikaciju  
+  - TODO: Ograničavanje broja zahteva (rate limiting)  
+  - TODO: Validacija zahteva  
 
-#### T1.2: Injection Attacks
-- **Description**: SQL/NoSQL injection through API parameters
-- **Impact**: High - Database compromise, data manipulation
-- **Likelihood**: Medium
-- **Mitigations**:
-  - TODO: Input validation and sanitization
-  - TODO: Parameterized queries
-  - TODO: Database access controls
+#### T1.2: Injekcioni Napadi
+- **Opis**: SQL/NoSQL injekcije kroz API parametre  
+- **Uticaj**: Visok - Kompromitovanje baze, manipulacija podacima  
+- **Verovatnoća**: Srednja  
+- **Rešenja**:  
+  - TODO: Validacija i sanitizacija ulaza  
+  - TODO: Parametrizovani upiti  
+  - TODO: Kontrola pristupa bazi  
 
-#### T1.3: Authorization Bypass
-- **Description**: Flaws in authorization logic allow privilege escalation
-- **Impact**: Critical - Complete access control bypass
-- **Likelihood**: High
-- **Mitigations**:
-  - TODO: Comprehensive authorization testing
-  - TODO: Secure coding practices
-  - TODO: Regular security reviews
+#### T1.3: Zaobilaženje Autorizacije
+- **Opis**: Greške u logici autorizacije omogućavaju eskalaciju privilegija  
+- **Uticaj**: Kritičan – Potpuno zaobilaženje kontrole pristupa  
+- **Verovatnoća**: Visoka  
+- **Rešenja**:  
+  - TODO: Sveobuhvatno testiranje autorizacije  
+  - TODO: Bezbednosne prakse u kodiranju  
+  - TODO: Redovni bezbednosni pregledi  
 
-### 2. Data Storage Threats
+### 2. Pretnje Skladištenja Podataka
 
-#### T2.1: Database Compromise
-- **Description**: Direct access to LevelDB or ConsulDB
-- **Impact**: Critical - Complete ACL data exposure/manipulation
-- **Likelihood**: Medium
-- **Mitigations**:
-  - TODO: Database encryption at rest
-  - TODO: Access controls and monitoring
-  - TODO: Network segmentation
+#### T2.1: Kompromitovanje Baze
+- **Opis**: Direktan pristup LevelDB ili ConsulDB  
+- **Uticaj**: Kritičan – Potpuno izlaganje/manipulacija ACL podataka  
+- **Verovatnoća**: Srednja  
+- **Rešenja**:  
+  - TODO: Enkripcija baze u stanju mirovanja  
+  - TODO: Kontrola pristupa i monitoring  
+  - TODO: Mrežna segmentacija  
 
-#### T2.2: Configuration Tampering
-- **Description**: Unauthorized modification of namespace configurations
-- **Impact**: High - Authorization logic manipulation
-- **Likelihood**: Medium
-- **Mitigations**:
-  - TODO: Configuration versioning and integrity checks
-  - TODO: Administrative access controls
-  - TODO: Change auditing
+#### T2.2: Manipulacija Konfiguracijom
+- **Opis**: Neautorizovana izmena namespace konfiguracija  
+- **Uticaj**: Visok – Manipulacija logikom autorizacije  
+- **Verovatnoća**: Srednja  
+- **Rešenja**:  
+  - TODO: Verzije konfiguracije i provere integriteta  
+  - TODO: Administrativna kontrola pristupa  
+  - TODO: Revizija izmena  
 
-### 3. Network Security Threats
+### 3. Pretnje Mrežne Bezbednosti
 
-#### T3.1: Man-in-the-Middle Attacks
-- **Description**: Interception of API communications
-- **Impact**: High - Credential theft, data exposure
-- **Likelihood**: Medium
-- **Mitigations**:
-  - TODO: TLS encryption for all communications
-  - TODO: Certificate validation
-  - TODO: Network monitoring
+#### T3.1: Man-in-the-Middle Napadi
+- **Opis**: Presretanje API komunikacije  
+- **Uticaj**: Visok – Krađa kredencijala, izlaganje podataka  
+- **Verovatnoća**: Srednja  
+- **Rešenja**:  
+  - TODO: TLS enkripcija za sve komunikacije  
+  - TODO: Validacija sertifikata  
+  - TODO: Mrežni monitoring  
 
 #### T3.2: Denial of Service
-- **Description**: Resource exhaustion attacks on API endpoints
-- **Impact**: Medium - Service unavailability
-- **Likelihood**: High
-- **Mitigations**:
-  - TODO: Rate limiting implementation
-  - TODO: Resource monitoring
-  - TODO: Load balancing
+- **Opis**: Napadi iscrpljivanja resursa na API endpoint-ima  
+- **Uticaj**: Srednji – Nedostupnost servisa  
+- **Verovatnoća**: Visoka  
+- **Rešenja**:  
+  - TODO: Implementacija rate limiting-a  
+  - TODO: Praćenje resursa  
+  - TODO: Load balancing  
 
-### 4. Application Logic Threats
+### 4. Pretnje Logike Aplikacije
 
 #### T4.1: Race Conditions
-- **Description**: Concurrent ACL operations causing inconsistent state
-- **Impact**: Medium - Data inconsistency, temporary privilege escalation
-- **Likelihood**: Medium
-- **Mitigations**:
-  - TODO: Proper concurrency controls
-  - TODO: Database transactions
-  - TODO: State validation
+- **Opis**: Istovremene ACL operacije izazivaju nedosledno stanje  
+- **Uticaj**: Srednji – Nedoslednost podataka, privremena eskalacija privilegija  
+- **Verovatnoća**: Srednja  
+- **Rešenja**:  
+  - TODO: Kontrole konkurentnosti  
+  - TODO: Transakcije baze  
+  - TODO: Validacija stanja  
 
-#### T4.2: Business Logic Flaws
-- **Description**: Flaws in ACL evaluation logic
-- **Impact**: High - Incorrect authorization decisions
-- **Likelihood**: Medium
-- **Mitigations**:
-  - TODO: Comprehensive testing
-  - TODO: Code reviews
-  - TODO: Formal verification methods
+#### T4.2: Greške u Poslovnoj Logici
+- **Opis**: Greške u logici evaluacije ACL-a  
+- **Uticaj**: Visok – Pogrešne odluke o autorizaciji  
+- **Verovatnoća**: Srednja  
+- **Rešenja**:  
+  - TODO: Sveobuhvatno testiranje  
+  - TODO: Code review  
+  - TODO: Formalne metode verifikacije  
 
-## Process Models
+## Procesni Modeli
 
-### ACL Creation Process
-1. **Input**: API request with object, relation, user
-2. **Validation**: Format validation, authentication check
-3. **Authorization**: Check permissions for ACL management
-4. **Storage**: Store tuple in LevelDB
-5. **Logging**: Audit log entry
-6. **Response**: Confirmation or error
+### Proces Kreiranja ACL-a
+1. **Ulaz**: API zahtev sa objektom, relacijom, korisnikom  
+2. **Validacija**: Provera formata, autentifikacija  
+3. **Autorizacija**: Provera dozvola za upravljanje ACL-om  
+4. **Skladištenje**: Čuvanje torke u LevelDB  
+5. **Logovanje**: Revizija u logovima  
+6. **Odgovor**: Potvrda ili greška  
 
-**Threats**: Unauthorized creation, injection attacks, data corruption
+**Pretnje**: Neautorizovano kreiranje, injekcioni napadi, korupcija podataka  
 
-### Authorization Check Process
-1. **Input**: API request with object, relation, user
-2. **Validation**: Format validation
-3. **Namespace Lookup**: Retrieve relation configuration from Consul
-4. **Evaluation**: Apply authorization rules (direct, computed usersets)
-5. **Caching**: Store result for performance (TODO)
-6. **Response**: Authorization decision
+### Proces Provere Autorizacije
+1. **Ulaz**: API zahtev sa objektom, relacijom, korisnikom  
+2. **Validacija**: Provera formata  
+3. **Pretraga Namespace-a**: Dohvatanje konfiguracije relacije iz Consul-a  
+4. **Evaluacija**: Primena pravila autorizacije (direktni, računati korisnički setovi)  
+5. **Keširanje**: Čuvanje rezultata radi performansi (TODO)  
+6. **Odgovor**: Odluka o autorizaciji  
 
-**Threats**: Logic bypass, cache poisoning, performance attacks
+**Pretnje**: Zaobilaženje logike, trovanje keša, napadi na performanse  
 
-### Namespace Management Process
-1. **Input**: API request with namespace configuration
-2. **Validation**: Configuration format and logic validation
-3. **Authorization**: Administrative access check
-4. **Versioning**: Create new version in Consul
-5. **Activation**: Update latest version pointer
-6. **Logging**: Configuration change audit
+### Proces Upravljanja Namespace-om
+1. **Ulaz**: API zahtev sa konfiguracijom namespace-a  
+2. **Validacija**: Validacija formata i logike konfiguracije  
+3. **Autorizacija**: Provera administratorskog pristupa  
+4. **Verzionisanje**: Kreiranje nove verzije u Consul-u  
+5. **Aktivacija**: Ažuriranje pokazivača na poslednju verziju  
+6. **Logovanje**: Revizija promena konfiguracije  
 
-**Threats**: Configuration tampering, privilege escalation, logic flaws
+**Pretnje**: Manipulacija konfiguracijom, eskalacija privilegija, greške u logici  
 
-## Risk Assessment Matrix
+## Matrica Procene Rizika
 
-| Threat | Impact | Likelihood | Risk Level | Priority |
-|--------|---------|------------|------------|----------|
-| T1.3 - Authorization Bypass | Critical | High | Critical | 1 |
-| T2.1 - Database Compromise | Critical | Medium | High | 2 |
-| T1.1 - Unauthorized API Access | High | Medium | High | 3 |
-| T1.2 - Injection Attacks | High | Medium | High | 4 |
-| T2.2 - Configuration Tampering | High | Medium | High | 5 |
-| T3.1 - MITM Attacks | High | Medium | High | 6 |
-| T4.2 - Business Logic Flaws | High | Medium | High | 7 |
-| T4.1 - Race Conditions | Medium | Medium | Medium | 8 |
-| T3.2 - Denial of Service | Medium | High | Medium | 9 |
+| Pretnja | Uticaj | Verovatnoća | Nivo Rizika | Prioritet |
+|---------|---------|-------------|-------------|-----------|
+| T1.3 - Zaobilaženje Autorizacije | Kritičan | Visoka | Kritičan | 1 |
+| T2.1 - Kompromitovanje Baze | Kritičan | Srednja | Visok | 2 |
+| T1.1 - Neautorizovan API Pristup | Visok | Srednja | Visok | 3 |
+| T1.2 - Injekcioni Napadi | Visok | Srednja | Visok | 4 |
+| T2.2 - Manipulacija Konfiguracijom | Visok | Srednja | Visok | 5 |
+| T3.1 - MITM Napadi | Visok | Srednja | Visok | 6 |
+| T4.2 - Greške u Poslovnoj Logici | Visok | Srednja | Visok | 7 |
+| T4.1 - Uslovi Utrke | Srednji | Srednja | Srednji | 8 |
+| T3.2 - Denial of Service | Srednji | Visoka | Srednji | 9 |
 
-## Recommendations
+## Preporuke
 
-### High Priority:
-1. Implement comprehensive authorization logic with proper testing
-2. Add authentication and authorization middleware
-3. Implement input validation and sanitization
-4. Add database encryption and access controls
+### Visok Prioritet:
+1. Implementirati sveobuhvatnu logiku autorizacije sa adekvatnim testiranjem  
+2. Dodati autentifikaciju i autorizacioni middleware  
+3. Implementirati validaciju i sanitizaciju ulaza  
+4. Dodati enkripciju baze i kontrole pristupa  
 
-### Medium Priority:
-1. Implement TLS for all communications
-2. Add comprehensive audit logging
-3. Implement rate limiting and DDoS protection
-4. Add configuration integrity checks
+### Srednji Prioritet:
+1. Implementirati TLS za sve komunikacije  
+2. Dodati sveobuhvatno revizijsko logovanje  
+3. Implementirati rate limiting i DDoS zaštitu  
+4. Dodati provere integriteta konfiguracije  
 
-### Low Priority:
-1. Implement caching with security considerations
-2. Add monitoring and alerting
-3. Implement backup and recovery procedures
-4. Add performance testing and optimization
+### Nizak Prioritet:
+1. Implementirati keširanje sa bezbednosnim razmatranjima  
+2. Dodati monitoring i upozoravanje  
+3. Implementirati procedure za backup i oporavak  
+4. Dodati testiranje performansi i optimizaciju  
