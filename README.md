@@ -185,7 +185,7 @@ logger.Infow("ACL check performed",
 - **Network Segmentation**: Services communicate on internal network
 - **Request Sanitization**: External requests blocked by default
 
-## 🚀 Quick Start Guide
+## Quick Start Guide
 
 ### Prerequisites
 - **Node.js** v16+ (for web client)
