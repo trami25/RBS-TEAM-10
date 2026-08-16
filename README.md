@@ -2,31 +2,31 @@
 
 A complete implementation of Google's Zanzibar authorization model with web interface, featuring multi-user authentication, document management, and real-time permission testing. This system demonstrates secure software development principles and OWASP Top 10 security controls.
 
-## 📋 Project Requirements Implementation
+## Project Requirements Implementation
 
-### ✅ Core Mini-Zanzibar Requirements Met
+### Core Mini-Zanzibar Requirements Met
 
 1. **Flexible Configuration Language** ✓
    - Namespace-based policy definitions in JSON format
    - Support for union operations and computed usersets
    - Hierarchical permission inheritance (owner → editor → viewer)
 
-2. **ACL Storage & Evaluation** ✓
+2. **ACL Storage & Evaluation** 
    - Relational tuples format: `object#relation@user`
    - LevelDB storage for high-performance ACL lookups
    - Real-time permission evaluation API
 
-3. **Consistent & Scalable Authorization** ✓
+3. **Consistent & Scalable Authorization** 
    - Consul-based namespace configuration with versioning
    - Redis caching for improved performance
    - Microservices architecture for scalability
 
-4. **Low Latency & High Availability** ✓
+4. **Low Latency & High Availability** 
    - Sub-100ms authorization checks
    - Docker containerization for deployment flexibility
    - Session-based authentication for reduced overhead
 
-## 🏗️ System Architecture
+## System Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -41,9 +41,9 @@ A complete implementation of Google's Zanzibar authorization model with web inte
                                               └─────────────────┘
 ```
 
-## 🛡️ OWASP Top 10 Security Implementation
+## OWASP Top 10 Security Implementation
 
-### A01: Broken Access Control → **SECURE** ✅
+### A01: Broken Access Control
 **Implementation:**
 - **Zanzibar ACL Model**: Every resource access controlled by explicit ACL entries
 - **Permission Hierarchy**: Owner > Editor > Viewer with proper inheritance
@@ -61,7 +61,7 @@ curl -X POST http://localhost:8080/api/v1/acl \
   -d '{"object":"doc:document1","relation":"viewer","user":"user:bob"}'
 ```
 
-### A02: Cryptographic Failures → **SECURE** ✅
+### A02: Cryptographic Failures
 **Implementation:**
 - **Bcrypt Password Hashing**: Salt rounds = 12, industry standard
 - **Session-based Authentication**: HTTP-only cookies, secure flags
@@ -83,7 +83,7 @@ http.SetCookie(w, &http.Cookie{
 })
 ```
 
-### A03: Injection → **SECURE** ✅
+### A03: Injection 
 **Implementation:**
 - **Input Validation**: All user inputs validated and sanitized
 - **Parameterized Queries**: No direct string concatenation in DB queries
@@ -105,14 +105,14 @@ func sanitizeFileName(filename string) string {
 }
 ```
 
-### A04: Insecure Design → **SECURE** ✅
+### A04: Insecure Design 
 **Implementation:**
 - **Zero Trust Architecture**: Every request authenticated and authorized
 - **Defense in Depth**: Multiple security layers (auth + authorization + validation)
 - **Secure by Default**: Default deny permissions, explicit grants required
 - **Threat Modeling**: Based on Zanzibar security model
 
-### A05: Security Misconfiguration → **SECURE** ✅
+### A05: Security Misconfiguration
 **Implementation:**
 - **Security Headers**: CSP, X-Frame-Options, X-Content-Type-Options
 - **CORS Configuration**: Specific origin allowlists
@@ -132,14 +132,14 @@ func securityHeaders(next http.Handler) http.Handler {
 }
 ```
 
-### A06: Vulnerable Components → **MONITORED** ⚠️
+### A06: Vulnerable Components 
 **Implementation:**
 - **Dependency Management**: Go modules with version pinning
 - **Regular Updates**: Automated dependency scanning (recommended)
 - **Minimal Dependencies**: Only essential libraries included
 - **Known CVE Monitoring**: Manual review of critical dependencies
 
-### A07: Authentication Failures → **SECURE** ✅
+### A07: Authentication Failures 
 **Implementation:**
 - **Rate Limiting**: 1000 attempts/minute (configurable for production)
 - **Session Management**: Automatic timeout and invalidation
@@ -152,14 +152,14 @@ func securityHeaders(next http.Handler) http.Handler {
 var loginLimiter = rate.NewLimiter(rate.Every(time.Minute/1000), 1000)
 ```
 
-### A08: Software Integrity Failures → **SECURE** ✅
+### A08: Software Integrity Failures
 **Implementation:**
 - **Container Security**: Docker images with security scanning
 - **Build Pipeline**: Reproducible builds with Go modules
 - **Version Control**: Git-based source control with signed commits
 - **Dependency Verification**: Module checksums verification
 
-### A09: Logging & Monitoring → **IMPLEMENTED** ✅
+### A09: Logging & Monitoring 
 **Implementation:**
 - **Structured Logging**: JSON-formatted logs with correlation IDs
 - **Audit Trail**: All authorization decisions logged
@@ -178,7 +178,7 @@ logger.Infow("ACL check performed",
 )
 ```
 
-### A10: Server-Side Request Forgery → **SECURE** ✅
+### A10: Server-Side Request Forgery
 **Implementation:**
 - **Input Validation**: All URLs and endpoints validated
 - **Allowlist Approach**: Only known internal services contacted
@@ -250,7 +250,7 @@ node server.js
 - **Auth Service API**: http://localhost:8081
 - **Mini-Zanzibar API**: http://localhost:8080
 
-## 👥 Pre-configured User Accounts
+## Pre-configured User Accounts
 
 | Username | Password | Default Role | Initial Permissions |
 |----------|----------|--------------|-------------------|
@@ -278,7 +278,7 @@ Invoke-RestMethod -Uri "http://localhost:8080/api/v1/acl" -Method POST -ContentT
 Invoke-RestMethod -Uri "http://localhost:8080/api/v1/acl/check?object=doc:document1.md&relation=editor&user=user:bob"
 ```
 
-## 📋 Comprehensive Testing Guide
+## Comprehensive Testing Guide
 
 ### Test Suite 1: Security Authentication & OWASP Controls
 
@@ -471,9 +471,9 @@ $response1 = Invoke-WebRequest -Uri "http://localhost:8081/auth/login" -Method P
 Invoke-WebRequest -Uri "http://localhost:8081/auth/login" -Method POST -ContentType "application/json" -Body '{"username":"bob","password":"bob123"}' -WebSession $session1 -ErrorAction SilentlyContinue
 ```
 
-## 🎯 Expected Test Results
+## Expected Test Results
 
-### ✅ Security Controls Working Correctly
+### Security Controls Working Correctly
 - **Authentication**: Only valid credentials accepted
 - **Authorization**: ACL-based access enforced consistently  
 - **Input Validation**: Malicious inputs rejected
@@ -482,20 +482,20 @@ Invoke-WebRequest -Uri "http://localhost:8081/auth/login" -Method POST -ContentT
 - **XSS Prevention**: Script injection blocked
 - **Path Traversal**: File access restricted to document directory
 
-### ⚠️ Known Limitations to Test
+### Known Limitations to Test
 - **Permission Hierarchy**: May require explicit ACL creation for each level
 - **Error Messages**: Some 500 errors instead of proper authorization failures
 - **Session Propagation**: Occasional authorization inconsistencies
 
-### 📊 Performance Benchmarks
+### Performance Benchmarks
 - **Authorization Check**: < 50ms average
 - **Document Load**: < 100ms average
 - **ACL Creation**: < 200ms average
 - **Concurrent Users**: 10+ simultaneous users supported
 
-## 🎯 Features Implemented per Mini-Zanzibar Specification
+## Features Implemented per Mini-Zanzibar Specification
 
-### ✅ Core Requirements Met
+### Core Requirements Met
 
 #### 1. **Flexible Configuration Language** ✓
 - **Namespace Definitions**: JSON-based configuration for authorization policies
@@ -552,7 +552,7 @@ doc:document3.md#viewer@user:charlie
 - **Session Optimization**: Reduced authentication overhead
 - **Concurrent Processing**: Multi-user simultaneous access
 
-### 🏗️ **Data Model Implementation**
+### **Data Model Implementation**
 
 #### **Relational Tuples Storage**
 ```
@@ -572,7 +572,7 @@ Versioning: Automatic version tracking
 Backup: Consul cluster replication
 ```
 
-### 🔧 **API Endpoints Specification Compliance**
+### **API Endpoints Specification Compliance**
 
 #### **Mini-Zanzibar Core API**
 ```
@@ -607,7 +607,7 @@ GET  /api/acl/check               # Proxy authorization check
 | API Throughput | High performance | 1000+ req/min | ✅ Met |
 | Data Consistency | Strong consistency | ACID compliance | ✅ Met |
 
-### 🛡️ **Security Implementation Beyond Specification**
+### **Security Implementation Beyond Specification**
 
 #### **Enhanced Security Features**
 - **OWASP Top 10 Compliance**: Complete security control implementation
@@ -649,7 +649,7 @@ Low: 3 issues found (security headers optimization)
 Info: 5 issues found (performance optimizations)
 ```
 
-## 📁 **Detailed Project Structure & Architecture**
+## **Detailed Project Structure & Architecture**
 
 ```
 RBS-TEAM-10/                           # Root project directory
@@ -740,7 +740,7 @@ RBS-TEAM-10/                           # Root project directory
     
 ```
 
-## 🔄 **Data Flow Architecture**
+## **Data Flow Architecture**
 
 ```
 ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────┐
@@ -763,7 +763,7 @@ RBS-TEAM-10/                           # Root project directory
                                     └─────────────┘     └─────────────┘
 ```
 
-## 🎓 **Educational Value & Learning Outcomes**
+## **Educational Value & Learning Outcomes**
 
 ### **Software Security Principles Demonstrated**
 
