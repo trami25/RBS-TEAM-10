@@ -6,7 +6,7 @@ A complete implementation of Google's Zanzibar authorization model with web inte
 
 ### Core Mini-Zanzibar Requirements Met
 
-1. **Flexible Configuration Language** ✓
+1. **Flexible Configuration Language** 
    - Namespace-based policy definitions in JSON format
    - Support for union operations and computed usersets
    - Hierarchical permission inheritance (owner → editor → viewer)
